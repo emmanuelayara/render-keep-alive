@@ -1,0 +1,43 @@
+name: Keep Render Service Alive
+
+on:
+  schedule:
+    # Runs every 5 minutes
+    - cron: '*/5 * * * *'
+  
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Ping Render Service
+      run: |
+        echo "Pinging Render service at $(date)"
+        
+        # Ping your service with timeout handling
+        if curl -f -s --max-time 90 --retry 2 https://barterex.onrender.com; then
+          echo "✅ Successfully pinged service"
+        else
+          echo "⚠️ Service ping failed or timed out (normal if service was sleeping)"
+          # Try one more time after a brief wait
+          sleep 10
+          if curl -f -s --max-time 90 https://barterex.onrender.com; then
+            echo "✅ Second attempt successful"
+          else
+            echo "❌ Both attempts failed"
+            exit 1
+          fi
+        fi
+        
+        echo "Keep-alive job completed at $(date)"
+      
+    - name: Log Success
+      if: success()
+      run: echo "🎉 Keep-alive successful!"
+      
+    - name: Log Failure
+      if: failure()
+      run: echo "💥 Keep-alive failed - check service status"
